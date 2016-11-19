@@ -64,11 +64,11 @@ class SakuraIO_SPI : public SakuraIO
 protected:
     SPI &spi;
     DigitalOut &cs;
-    void begin();
-    void end();
-    void sendByte(uint8_t data);
-    uint8_t receiveByte(bool stop);
-    uint8_t receiveByte();
+    virtual void begin();
+    virtual void end();
+    virtual void sendByte(uint8_t data);
+    virtual uint8_t receiveByte(bool stop);
+    virtual uint8_t receiveByte();
 public:
     SakuraIO_SPI(SPI &_spi, DigitalOut &_cs);
 };
