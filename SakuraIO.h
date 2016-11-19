@@ -1,6 +1,7 @@
 #ifndef _SAKURAIO_H_
 #define _SAKURAIO_H_
 
+#include "mbed.h"
 #include <SakuraIO/commands.h>
 
 class SakuraIO
@@ -75,16 +76,19 @@ public:
 class SakuraIO_I2C : public SakuraIO
 {
 protected:
-  I2C &i2c;
-  void begin();
-  void end();
-  void sendByte(uint8_t data);
-  uint8_t startReceive(uint8_t length);
-  uint8_t receiveByte(bool stop);
-  uint8_t receiveByte();
+  I2C i2c;
+  int _length;
+ 
+  virtual void begin();
+  virtual void end();
+  virtual void sendByte(uint8_t data);
+  virtual uint8_t startReceive(uint8_t length);
+  virtual uint8_t receiveByte(bool stop);
+  virtual uint8_t receiveByte();
   uint8_t mode;
 public:
-  SakuraIO_I2C(I2C &_i2c);
+  SakuraIO_I2C (I2C &_i2c);
+  SakuraIO_I2C (PinName sda, PinName scl);
 };
 
 #endif // _SAKURAIO_H_
