@@ -1,19 +1,19 @@
 /* SAKURA Internet IoT Communication Module Library for mbed
- * 
+ *
  * The MIT License (MIT)
- * 
+ *
  * Copyright (c) SAKURA Internet Inc.
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
  * the rights to use, copy, modify, merge, publish, distribute, sublicense,
  * and/or sell copies of the Software, and to permit persons to whom the Software
  * is furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -48,7 +48,8 @@ protected:
 
 public:
   uint8_t getConnectionStatus();
-  uint8_t getSignalQuarity();
+  uint8_t getSignalQuarity(); // Deprecated
+  uint8_t getSignalQuality();
   uint64_t getUnixtime();
   uint8_t echoback(uint8_t length, uint8_t *data, uint8_t *response);
   uint16_t getADC(uint8_t channel);
@@ -102,7 +103,7 @@ class SakuraIO_I2C : public SakuraIO
 protected:
   I2C i2c;
   int _length;
- 
+
   virtual void begin();
   virtual void end();
   virtual void sendByte(uint8_t data);
