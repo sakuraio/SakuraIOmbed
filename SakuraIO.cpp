@@ -27,11 +27,13 @@
 #include "SakuraIO/commands.h"
 #include "SakuraIO/debug.h"
 
+#define delay(ms) wait_ms(ms)
+
 uint8_t SakuraIO::executeCommand(uint8_t cmd,uint8_t requestLength, uint8_t *request, uint8_t *responseLength, uint8_t *response)
 {
   uint8_t parity = 0x00;
   uint8_t result = 0x00;
-  uint8_t tmpResponseLength, tmpResponse;
+  uint8_t reservedResponseLength, tmpResponse, receivedResponseLength;
 
   dbgln("executeCommand");
 
@@ -48,33 +50,31 @@ uint8_t SakuraIO::executeCommand(uint8_t cmd,uint8_t requestLength, uint8_t *req
   this->sendByte(parity);
   //this->finishSending();
 
-  tmpResponseLength = 0;
+  reservedResponseLength = 0;
   if(responseLength != NULL){
-    tmpResponseLength = *responseLength;
+    reservedResponseLength = *responseLength;
   }
 
-  wait_ms(10);
+  delay(10);
 
   // response
-  this->startReceive(tmpResponseLength+3);
+  this->startReceive(reservedResponseLength+3);
   result = this->receiveByte();
   if(result != CMD_ERROR_NONE){
     dbgln("Invalid status");
     this->end();
     return result;
   }
-  tmpResponseLength = this->receiveByte();
-  parity = result ^ tmpResponseLength;
+  receivedResponseLength = this->receiveByte();
   if(responseLength != NULL){
-    if(*responseLength < tmpResponseLength){
-      tmpResponseLength = *responseLength;
-    }
-    *responseLength = tmpResponseLength;
+    *responseLength = receivedResponseLength;
   }
-  for(int16_t i=0; i<tmpResponseLength; i++){
+
+  parity = result ^ receivedResponseLength;
+  for(int16_t i=0; i<receivedResponseLength; i++){
     tmpResponse = this->receiveByte();
     parity ^= tmpResponse;
-    if(response != NULL){
+    if(response != NULL && i<reservedResponseLength){
       response[i] = tmpResponse;
     }
   }
@@ -224,6 +224,81 @@ uint8_t SakuraIO::enqueueTx(uint8_t ch, uint8_t value[8]){
   return enqueueTx(ch, value, (uint32_t)0);
 }
 
+uint8_t SakuraIO::sendImmediatelyRaw(uint8_t ch, uint8_t type, uint8_t length, uint8_t *data, uint64_t offset){
+  uint8_t request[18] = {0x00};
+  uint8_t requestLength = 10;
+  request[0] = ch;
+  request[1] = type;
+  for(uint8_t i=0;i<length;i++){
+    request[2+i] = data[i];
+  }
+  if(offset != 0){
+    requestLength = 18;
+    for(uint8_t i=0;i<8;i++){
+      request[10+i] = ((uint8_t *)&offset)[i];
+    }
+  }
+  return executeCommand(CMD_TX_SENDIMMED, requestLength, request, NULL, NULL);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, int32_t value, uint64_t offset){
+  return sendImmediatelyRaw(ch, 'i', 4, (uint8_t *)&value, offset);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, uint32_t value, uint64_t offset){
+  return sendImmediatelyRaw(ch, 'I', 4, (uint8_t *)&value, offset);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, int64_t value, uint64_t offset){
+  return sendImmediatelyRaw(ch, 'l', 8, (uint8_t *)&value, offset);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, uint64_t value, uint64_t offset){
+  return sendImmediatelyRaw(ch, 'L', 8, (uint8_t *)&value, offset);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, float value, uint64_t offset){
+  return sendImmediatelyRaw(ch, 'f', 4, (uint8_t *)&value, offset);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, double value, uint64_t offset){
+  return sendImmediatelyRaw(ch, 'd', 8, (uint8_t *)&value, offset);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, uint8_t value[8], uint64_t offset){
+  return sendImmediatelyRaw(ch, 'b', 8, (uint8_t *)value, offset);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, int32_t value){
+  return sendImmediately(ch, value, (uint32_t)0);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, uint32_t value){
+  return sendImmediately(ch, value, (uint32_t)0);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, int64_t value){
+  return sendImmediately(ch, value, (uint32_t)0);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, uint64_t value){
+  return sendImmediately(ch, value, (uint32_t)0);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, float value){
+  return sendImmediately(ch, value, (uint32_t)0);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, double value){
+  return sendImmediately(ch, value, (uint32_t)0);
+}
+
+uint8_t SakuraIO::sendImmediately(uint8_t ch, uint8_t value[8]){
+  return sendImmediately(ch, value, (uint32_t)0);
+}
+
+
+
 uint8_t SakuraIO::getTxQueueLength(uint8_t *available, uint8_t *queued){
   uint8_t response[2] = {0x00};
   uint8_t responseLength = 2;
@@ -303,6 +378,39 @@ uint8_t SakuraIO::getRxQueueLength(uint8_t *available, uint8_t *queued){
 
 uint8_t SakuraIO::clearRx(){
   return executeCommand(CMD_RX_CLEAR, 0, NULL, NULL, NULL);
+}
+
+/* File command */
+uint8_t SakuraIO::startFileDownload(uint16_t fileId){
+  return executeCommand(CMD_START_FILE_DOWNLOAD, 2, (uint8_t *)&fileId, NULL, NULL);
+}
+
+uint8_t SakuraIO::cancelFileDownload(){
+  return executeCommand(CMD_CANCEL_FILE_DOWNLOAD, 0, NULL, NULL, NULL);
+}
+
+uint8_t SakuraIO::getFileMetaData(uint8_t *status, uint32_t *totalSize, uint64_t *timestamp, uint32_t *crc){
+  uint8_t response[17] = {0x00};
+  uint8_t responseLength = 17;
+  uint8_t ret = executeCommand(CMD_GET_FILE_METADATA, 0, NULL, &responseLength, response);
+  *status = response[0];
+  *totalSize = *(uint32_t *)(response+1);
+  *timestamp = *(uint64_t *)(response+5);
+  *crc = *(uint32_t *)(response+13);
+  return ret;
+}
+
+uint8_t SakuraIO::getFileDownloadStatus(uint8_t *status, uint32_t *currentSize){
+  uint8_t response[5] = {0x00};
+  uint8_t responseLength = 5;
+  uint8_t ret = executeCommand(CMD_GET_FILE_DOWNLOAD_STATUS, 0, NULL, &responseLength, response);
+  *status = response[0];
+  *currentSize = *(uint32_t *)(response+1);
+  return ret;
+}
+
+uint8_t SakuraIO::getFileData(uint8_t *size, uint8_t *data){
+  return executeCommand(CMD_GET_FILE_DATA, 1, size, size, data);
 }
 
 /* Operation command */
